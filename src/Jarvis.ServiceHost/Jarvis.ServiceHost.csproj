@@ -54,6 +54,9 @@
     <Reference Include="Jarvis.NEventStoreEx">
       <HintPath>..\packages\Jarvis.Framework.1.0.13-pre\lib\Jarvis.NEventStoreEx.dll</HintPath>
     </Reference>
+    <Reference Include="log4net">
+      <HintPath>..\packages\log4net.1.2.10\lib\2.0\log4net.dll</HintPath>
+    </Reference>
     <Reference Include="Metrics">
       <HintPath>..\packages\Metrics.NET.0.2.16\lib\net45\Metrics.dll</HintPath>
     </Reference>
@@ -99,13 +102,20 @@
     <Reference Include="Topshelf">
       <HintPath>..\packages\Topshelf.3.2.0\lib\net40-full\Topshelf.dll</HintPath>
     </Reference>
+    <Reference Include="TopShelf.OldLog4NetIntegration">
+      <HintPath>..\packages\TopShelf.OldLog4NetIntegration.1.01\lib\net35\TopShelf.OldLog4NetIntegration.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Support\Bootstrapper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="log4net.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
