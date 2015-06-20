@@ -17,8 +17,6 @@ namespace Jarvis.ServiceHost
                 Banner();
             }
 
-            Bootstrapper.Init();
-            
             var exitCode = HostFactory.Run(host =>
             {
                 host.UseOldLog4Net("log4net.config");
