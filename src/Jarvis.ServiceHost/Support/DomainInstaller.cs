@@ -16,12 +16,4 @@ namespace Jarvis.ServiceHost.Support
             
         }
     }
-
-    class ApiInstaller : IWindsorInstaller
-    {
-        public void Install(IWindsorContainer container, IConfigurationStore store)
-        {
-            
-        }
-    }
 }

@@ -17,6 +17,9 @@ namespace Jarvis.ServiceHost
                 Banner();
             }
 
+            BootstrapperConfig config = new BootstrapperConfig();
+            config.ServerAddresses.Add("http://localhost:54321");
+
             var exitCode = HostFactory.Run(host =>
             {
                 host.UseOldLog4Net("log4net.config");
@@ -24,7 +27,7 @@ namespace Jarvis.ServiceHost
                 host.Service<Bootstrapper>(service =>
                 {
                     service.ConstructUsing(() => new Bootstrapper());
-                    service.WhenStarted(s => s.Start());
+                    service.WhenStarted(s => s.Start(config));
                     service.WhenStopped(s => s.Stop());
                 });
 
