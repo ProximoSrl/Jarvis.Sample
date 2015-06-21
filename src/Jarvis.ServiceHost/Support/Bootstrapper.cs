@@ -6,6 +6,8 @@ using Castle.Facilities.Logging;
 using Castle.Services.Logging.Log4netIntegration;
 using Castle.Windsor;
 using Jarvis.Framework.Shared.IdentitySupport;
+using Jarvis.NEventStoreEx.CommonDomainEx.Persistence;
+using Jarvis.Reservations.Domain.Resource;
 using Microsoft.Owin.Hosting;
 
 namespace Jarvis.ServiceHost.Support
@@ -18,15 +20,14 @@ namespace Jarvis.ServiceHost.Support
         public Bootstrapper()
         {
             MongoFlatMapper.EnableFlatMapping(); //before any chanche that the driver scan any type.
-            ConfigureContainer();
         }
 
-        private void ConfigureContainer()
+        private void ConfigureContainer(BootstrapperConfig config)
         {
             _container = new WindsorContainer();
             _container.AddFacility<LoggingFacility>(f => f.LogUsing(new ExtendedLog4netFactory("log4net.config")));
             _container.Install(
-                new DomainInstaller(),
+                new DomainInstaller(config),
                 new ApiInstaller()
             );
 
@@ -35,7 +36,7 @@ namespace Jarvis.ServiceHost.Support
 
         public void Start(BootstrapperConfig config)
         {
-            ConfigureContainer();
+            ConfigureContainer(config);
 
             var options = new StartOptions();
             foreach (var uri in config.ServerAddresses)
