@@ -25,10 +25,10 @@ namespace Jarvis.ServiceHost.Support
                 DependencyResolver = new WindsorResolver(Container)
             };
 
+            config.EnableSystemDiagnosticsTracing();
+
             config.MapHttpAttributeRoutes();
-            config.Routes.Add("default", new HttpRoute(
-                "api/{controller}/{action}"
-            ));
+
 
             var jsonFormatter = new JsonMediaTypeFormatter();
             jsonFormatter.SerializerSettings.Converters.Add(new StringValueJsonConverter());
