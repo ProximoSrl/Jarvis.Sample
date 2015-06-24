@@ -18,6 +18,7 @@ namespace Jarvis.Reservations.ReadModel.ResourceList
         public ResourceListProjection(ICollectionWrapper<ResourceListReadModel, ResourceId> list)
         {
             _list = list;
+            list.Attach(this,false);
         }
 
         public override void Drop()
