@@ -49,15 +49,15 @@
     </Reference>
     <Reference Include="Jarvis.Framework.Kernel, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Jarvis.Framework.1.0.20-pre\lib\Jarvis.Framework.Kernel.dll</HintPath>
+      <HintPath>..\packages\Jarvis.Framework.1.0.21-pre\lib\Jarvis.Framework.Kernel.dll</HintPath>
     </Reference>
     <Reference Include="Jarvis.Framework.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Jarvis.Framework.1.0.20-pre\lib\Jarvis.Framework.Shared.dll</HintPath>
+      <HintPath>..\packages\Jarvis.Framework.1.0.21-pre\lib\Jarvis.Framework.Shared.dll</HintPath>
     </Reference>
-    <Reference Include="Jarvis.NEventStoreEx, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Jarvis.Framework.1.0.20-pre\lib\Jarvis.NEventStoreEx.dll</HintPath>
+    <Reference Include="Jarvis.NEventStoreEx">
+      <HintPath>..\packages\Jarvis.Framework.1.0.21-pre\lib\Jarvis.NEventStoreEx.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="log4net">
       <HintPath>..\packages\log4net.1.2.10\lib\2.0\log4net.dll</HintPath>
