@@ -3,8 +3,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Castle.Facilities.Logging;
+using Castle.MicroKernel.Resolvers.SpecializedResolvers;
 using Castle.Services.Logging.Log4netIntegration;
 using Castle.Windsor;
+using Jarvis.Framework.Kernel.ProjectionEngine;
 using Jarvis.Framework.Shared.IdentitySupport;
 using Jarvis.NEventStoreEx.CommonDomainEx.Persistence;
 using Jarvis.Reservations.Domain.Resource;
@@ -16,6 +18,7 @@ namespace Jarvis.ServiceHost.Support
     {
         private IWindsorContainer _container;
         private IDisposable _webApplication;
+        private ConcurrentProjectionsEngine _projections;
 
         public Bootstrapper()
         {
@@ -25,6 +28,9 @@ namespace Jarvis.ServiceHost.Support
         private void ConfigureContainer(BootstrapperConfig config)
         {
             _container = new WindsorContainer();
+            _container.Kernel.Resolver.AddSubResolver(new CollectionResolver(_container.Kernel, true));
+            _container.Kernel.Resolver.AddSubResolver(new ArrayResolver(_container.Kernel, true));
+
             _container.AddFacility<LoggingFacility>(f => f.LogUsing(new ExtendedLog4netFactory("log4net.config")));
             _container.Install(
                 new DomainInstaller(config),
@@ -43,12 +49,20 @@ namespace Jarvis.ServiceHost.Support
             {
                 options.Urls.Add(uri);
             }
+            _projections = _container.Resolve<ConcurrentProjectionsEngine>();
+            _projections.Start();
 
             _webApplication = WebApp.Start<ApiApplication>(options);
         }
 
         public void Stop()
         {
+            if (_projections != null)
+            {
+                _projections.Stop();
+                _projections = null;
+            }
+
             if (_webApplication != null)
             {
                 _webApplication.Dispose();

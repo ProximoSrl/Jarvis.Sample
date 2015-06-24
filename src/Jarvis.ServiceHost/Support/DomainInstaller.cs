@@ -1,18 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using Castle.MicroKernel.Registration;
+﻿using Castle.MicroKernel.Registration;
 using Castle.MicroKernel.SubSystems.Configuration;
 using Castle.Windsor;
 using CommonDomain;
 using CommonDomain.Core;
 using Jarvis.Framework.Kernel.Engine;
 using Jarvis.Framework.Kernel.Engine.Snapshots;
+using Jarvis.Framework.Kernel.Events;
+using Jarvis.Framework.Kernel.ProjectionEngine;
+using Jarvis.Framework.Kernel.ProjectionEngine.Client;
+using Jarvis.Framework.Kernel.ProjectionEngine.RecycleBin;
 using Jarvis.Framework.Shared.IdentitySupport;
 using Jarvis.Framework.Shared.IdentitySupport.Serialization;
+using Jarvis.Framework.Shared.Messages;
+using Jarvis.Framework.Shared.ReadModel;
 using Jarvis.Framework.Shared.Storage;
 using Jarvis.NEventStoreEx.CommonDomainEx;
 using Jarvis.NEventStoreEx.CommonDomainEx.Persistence;
@@ -23,7 +23,7 @@ using NEventStore.Dispatcher;
 
 namespace Jarvis.ServiceHost.Support
 {
-    class DomainInstaller : IWindsorInstaller
+    internal class DomainInstaller : IWindsorInstaller
     {
         private readonly BootstrapperConfig _config;
 
@@ -34,11 +34,86 @@ namespace Jarvis.ServiceHost.Support
 
         public void Install(IWindsorContainer container, IConfigurationStore store)
         {
-            RegisterGlobalComponents(container);
             RegisterMappings(container);
+            RegisterEventStore(container);
+            RegisterReadModel(container);
         }
 
-        private void RegisterGlobalComponents(IWindsorContainer container)
+        private void RegisterReadModel(IWindsorContainer container)
+        {
+            var config = new ProjectionEngineConfig
+            {
+                EventStoreConnectionString = _config.EventStoreConnectionString,
+                Slots = _config.EngineSlots,
+                PollingMsInterval = _config.PollingMsInterval,
+                ForcedGcSecondsInterval = 600,
+                DelayedStartInMilliseconds = _config.DelayedStartInMilliseconds
+            };
+
+            foreach (var assembly in _config.Assemblies)
+            {
+                container.Register(
+                    Classes
+                        .FromAssembly(assembly)
+                        .BasedOn<IProjection>()
+                        .WithServiceAllInterfaces()
+                        .LifestyleSingleton()
+                    );
+            }
+
+            container.Register(
+                Component
+                    .For<IHousekeeper>()
+                    .ImplementedBy<NullHouseKeeper>(),
+                Component
+                    .For<INotifyToSubscribers>()
+                    .ImplementedBy<NotifyToNobody>(),
+                Component
+                    .For<ICommitEnhancer>()
+                    .ImplementedBy<CommitEnhancer>(),
+                Component
+                    .For<INotifyCommitHandled>()
+                    .ImplementedBy<NullNotifyCommitHandled>(),
+                Component
+                    .For(typeof (IReader<,>), typeof (IMongoDbReader<,>))
+                    .ImplementedBy(typeof (MongoReaderForProjections<,>))
+                    .DependsOn(Dependency.OnValue<MongoDatabase>(_config.ReadModelDb)),
+                Component
+                    .For<IInitializeReadModelDb>()
+                    .ImplementedBy<InitializeReadModelDb>(),
+                Component
+                    .For<IConcurrentCheckpointTracker>()
+                    .ImplementedBy<ConcurrentCheckpointTracker>()
+                    .DependsOn(Dependency.OnValue<MongoDatabase>(_config.ReadModelDb)),
+                Component
+                    .For(typeof (ICollectionWrapper<,>), typeof (IReadOnlyCollectionWrapper<,>))
+                    .ImplementedBy(typeof (CollectionWrapper<,>))
+                    .DependsOn(Dependency.OnValue<MongoDatabase>(_config.ReadModelDb)),
+                Component
+                    .For<IPollingClient>()
+                    .ImplementedBy<PollingClientWrapper>()
+                    .DependsOn(Dependency.OnConfigValue("boost", _config.Boost)),
+                Component
+                    .For<IRebuildContext>()
+                    .ImplementedBy<RebuildContext>()
+                    .DependsOn(Dependency.OnValue<bool>(RebuildSettings.NitroMode)),
+                Component
+                    .For<IMongoStorageFactory>()
+                    .ImplementedBy<MongoStorageFactory>()
+                    .DependsOn(Dependency.OnValue<MongoDatabase>(_config.ReadModelDb)),
+                Component
+                    .For<IRecycleBin>()
+                    .ImplementedBy<RecycleBin>()
+                    .DependsOn(Dependency.OnValue<MongoDatabase>(_config.ReadModelDb)),
+                Component
+                    .For<ConcurrentProjectionsEngine, ITriggerProjectionsUpdate>()
+                    .ImplementedBy<ConcurrentProjectionsEngine>()
+                    .LifestyleSingleton()
+                    .DependsOn(Dependency.OnValue<ProjectionEngineConfig>(config))
+                );
+        }
+
+        private void RegisterEventStore(IWindsorContainer container)
         {
             container.Register(
                 Component
@@ -55,14 +130,6 @@ namespace Jarvis.ServiceHost.Support
                     .ImplementedBy<ConflictDetector>()
                     .LifestyleTransient(),
                 Component
-                    .For<ICounterService>()
-                    .ImplementedBy<CounterService>()
-                    .DependsOn(Dependency.OnValue<MongoDatabase>(_config.SystemDb))
-                    ,
-                Component
-                    .For<IIdentityManager, IIdentityGenerator, IIdentityConverter, IdentityManager>()
-                    .ImplementedBy<IdentityManager>(),
-                Component
                     .For<IStoreEvents>()
                     .UsingFactory<EventStoreFactory, IStoreEvents>(f =>
                     {
@@ -71,14 +138,14 @@ namespace Jarvis.ServiceHost.Support
                         return f.BuildEventStore(
                             _config.EventStoreConnectionString,
                             hooks
-                        );
+                            );
                     })
                     .LifestyleSingleton(),
                 Component
                     .For<IRepositoryEx, RepositoryEx>()
                     .ImplementedBy<RepositoryEx>()
                     .LifestyleTransient()
-            );
+                );
 
             foreach (var assembly in _config.Assemblies)
             {
@@ -88,16 +155,27 @@ namespace Jarvis.ServiceHost.Support
                         .BasedOn<AggregateBase>()
                         .WithService.Self()
                         .LifestyleTransient(),
-                     Classes
+                    Classes
                         .FromAssembly(assembly)
                         .BasedOn<IPipelineHook>()
                         .WithServiceAllInterfaces()
-               );
+                    );
             }
         }
 
         private void RegisterMappings(IWindsorContainer container)
         {
+            container.Register(
+                Component
+                    .For<ICounterService>()
+                    .ImplementedBy<CounterService>()
+                    .DependsOn(Dependency.OnValue<MongoDatabase>(_config.SystemDb)),
+                Component
+                    .For<IIdentityManager, IIdentityGenerator, IIdentityConverter, IdentityManager>()
+                    .ImplementedBy<IdentityManager>()
+                );
+
+
             var identityManager = container.Resolve<IdentityManager>();
 
             EnableFlatIdMapping(identityManager);
@@ -114,7 +192,7 @@ namespace Jarvis.ServiceHost.Support
             // value objects custom mappings
         }
 
-        static void EnableFlatIdMapping(IdentityManager converter)
+        private static void EnableFlatIdMapping(IdentityManager converter)
         {
             EventStoreIdentityBsonSerializer.IdentityConverter = converter;
         }
