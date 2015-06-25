@@ -152,13 +152,14 @@ namespace Jarvis.ServiceHost.Support
                 container.Register(
                     Classes
                         .FromAssembly(assembly)
-                        .BasedOn<AggregateBase>()
+                        .BasedOn<AggregateRoot>()
                         .WithService.Self()
                         .LifestyleTransient(),
                     Classes
                         .FromAssembly(assembly)
                         .BasedOn<IPipelineHook>()
                         .WithServiceAllInterfaces()
+                        
                     );
             }
         }
